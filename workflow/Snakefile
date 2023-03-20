@@ -1,0 +1,9 @@
+rule download_dataset:
+    output:
+        directory("data/raw/train"),
+        directory("data/raw/test1"),
+        "data/raw/sampleSubmission.csv"
+    log:
+        "workflow/logs/download_dataset.log"
+    shell:
+        "python src/make_dataset.py 2> {log}"
