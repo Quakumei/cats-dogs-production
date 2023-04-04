@@ -5,13 +5,13 @@ import logging
 import os
 
 from aiogram import Bot, Dispatcher, types
-# FSM
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from dotenv import load_dotenv
 
 from bot_locale import LOCALE_RUS
+from denoise import denoise, pil_to_telegram, telegram_to_pil
 
 
 def get_env(
@@ -110,9 +110,18 @@ async def denoise_image(message: types.Message, state: FSMContext):
     )
     await state.finish()
 
+    # Fetch image
+    img = await bot.download_file_by_id(data["image"])
+    img = img.read()
+
+    # Denoise image
+    img = telegram_to_pil(img)
+    processed_image = denoise(img, data["denoise_method"])
+    processed_image = pil_to_telegram(processed_image)
+
     # Reply with the image
     await message.reply_photo(
-        photo=data["image"],
+        photo=processed_image,
     )
 
 

@@ -1,4 +1,4 @@
-.DEFAULT_GOAL := help
+.DEFAULT_GOAL := run_bot
 
 # Set python
 export PYTHONPATH=.
@@ -22,6 +22,36 @@ help:
 # ================================================================================================
 # Dependencies
 # ================================================================================================
+
+# People say it takes 5 mins to 2 hours to build from sources
+# https://forum.opencv.org/t/can-i-use-opencv-python-with-gpu/8947/2
+build_opencv/opencv-python/dist:
+	mkdir build_opencv
+	cd build_opencv && git clone https://github.com/opencv/opencv && git clone https://github.com/opencv/opencv_contrib
+	cd build_opencv %% cmake -DOPENCV_EXTRA_MODULES_PATH=opencv_contrib/modules  \
+       -DBUILD_SHARED_LIBS=OFF \
+       -DBUILD_TESTS=OFF \
+       -DBUILD_PERF_TESTS=OFF \
+       -DBUILD_EXAMPLES=OFF \
+       -DWITH_OPENEXR=OFF \
+       -DWITH_CUDA=ON \
+       -DWITH_CUBLAS=ON \
+       -DWITH_CUDNN=ON \
+       -DOPENCV_DNN_CUDA=ON \
+       /opencv
+	make -j8 install
+	cd opencv-python && pip wheel . --verbose
+
+# https://stackoverflow.com/questions/27885397/how-do-i-install-a-python-package-with-a-whl-file
+.PHONY: install_opencv_cuda
+install_opencv_cuda: build_opencv/opencv-python/dist
+	@echo Installing built pip wheel...
+	$(python) -m pip install build_opencv/opencv-python/dist/*.whl
+
+.PHONY: clean_opencv
+clean_opencv:
+	rm build_opencv/*
+	rmdir build_opencv
 
 .PHONY: install
 install:
