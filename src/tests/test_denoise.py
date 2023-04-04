@@ -16,15 +16,15 @@ def test_denoise_sanity():
     # Test will drop divide by zero warning
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        image_gt = Image.open("src/tests/data/gt.png")
+        image_gt = Image.open("src/tests/data/gt.jpg")
         psnr, ssim = get_psnr_ssim(image_gt, image_gt)
         assert psnr == float("inf")
         assert ssim == 1
 
 
 def test_denoise_cv2():
-    image_gt = Image.open("src/tests/data/gt.png")
-    image_noisy = Image.open("src/tests/data/noisy.png")
+    image_gt = Image.open("src/tests/data/gt.jpg")
+    image_noisy = Image.open("src/tests/data/noisy.jpg")
     image_denoised = denoise(image_noisy, "cv2.fastNlMeansDenoisingColored")
     psnr, ssim = get_psnr_ssim(image_gt, image_denoised)
     assert psnr > 30
@@ -32,8 +32,8 @@ def test_denoise_cv2():
 
 
 def test_denoise_neural():
-    image_gt = Image.open("src/tests/data/gt.png")
-    image_noisy = Image.open("src/tests/data/noisy.png")
+    image_gt = Image.open("src/tests/data/gt.jpg")
+    image_noisy = Image.open("src/tests/data/noisy.jpg")
     image_denoised = denoise(image_noisy, "Нейронная сеть")
     if image_denoised == image_noisy:
         pytest.skip("Neural network not implemented")
