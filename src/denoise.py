@@ -54,6 +54,8 @@ def calc_psnr(image_gt: Image.Image, image_denoised: Image.Image) -> float:
     inf if good
     0 if bad
     """
+    image_gt = np.array(image_gt)
+    image_denoised = np.array(image_denoised)
     return psnr(image_gt, image_denoised)
 
 
@@ -62,4 +64,6 @@ def calc_ssim(image_gt: Image.Image, image_denoised: Image.Image) -> float:
     1 if good
     0 if bad
     """
-    return ssim(image_gt, image_denoised, multichannel=True)
+    image_gt = np.array(image_gt)
+    image_denoised = np.array(image_denoised)
+    return ssim(image_gt, image_denoised, multichannel=True, channel_axis=2)

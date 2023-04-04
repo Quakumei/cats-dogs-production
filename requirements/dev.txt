@@ -2,3 +2,6 @@ isort
 black
 flake8
 pre-commit
+
+# Unit testing
+pytest

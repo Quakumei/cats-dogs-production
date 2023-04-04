@@ -1,4 +1,4 @@
-.DEFAULT_GOAL := run_bot
+.DEFAULT_GOAL := help
 
 # Set python
 export PYTHONPATH=.
@@ -16,6 +16,7 @@ help:
 	@echo " "
 	@echo "  - DEVELOPMENT -"
 	@echo "  lint			Reformat code"
+	@echo "  test		Run tests"
 	@echo "  install_dev	Install the dependencies for development"
 
 
@@ -81,6 +82,13 @@ flake:
 .PHONY: lint
 lint: black isort flake
 
+# ================================================================================================
+# Tests
+# ================================================================================================
+
+.PHONY: test
+test:
+	$(python) -m pytest
 
 # ================================================================================================
 # Start
