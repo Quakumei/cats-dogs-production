@@ -1,0 +1,7 @@
+aiogram
+python-dotenv
+
+# Image processing
+scikit-image
+opencv-python # Build from source for CUDA: https://pypi.org/project/opencv-python/
+Pillow
