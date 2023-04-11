@@ -64,8 +64,10 @@ class FormDenoise(StatesGroup):
     denoise_method = State()
     image = State()
 
+
 class FormDenoiseHelp(StatesGroup):
     denoise_method = State()
+
 
 @dp.message_handler(commands=["denoise"])
 async def denoise_start(message: types.Message):
@@ -88,6 +90,7 @@ async def denoise_start(message: types.Message):
         ),
     )
 
+
 @dp.message_handler(commands=["help_algo"])
 async def help_algo_start(message: types.Message):
     """Help algo command handler"""
@@ -109,6 +112,7 @@ async def help_algo_start(message: types.Message):
         ),
     )
 
+
 @dp.message_handler(state=FormDenoiseHelp.denoise_method)
 async def help_algo_method(message: types.Message, state: FSMContext):
     """Help algo method handler"""
@@ -118,11 +122,9 @@ async def help_algo_method(message: types.Message, state: FSMContext):
     await message.reply(
         locale[f"help_algo-{data['denoise_method']}"],
         reply_markup=types.ReplyKeyboardRemove(),
-        parse_mode="Markdown"
+        parse_mode="Markdown",
     )
     await state.finish()
-
-
 
 
 @dp.message_handler(state=FormDenoise.denoise_method)
@@ -135,7 +137,9 @@ async def denoise_method(message: types.Message, state: FSMContext):
     )
 
 
-@dp.message_handler(state=FormDenoise.image, content_types=types.ContentTypes.PHOTO)
+@dp.message_handler(
+    state=FormDenoise.image, content_types=types.ContentTypes.PHOTO
+)
 async def denoise_image(message: types.Message, state: FSMContext):
     """Denoise image handler"""
     await state.update_data(image=message.photo[-1].file_id)
