@@ -55,9 +55,8 @@ dp = Dispatcher(bot, storage=storage)
 logging.basicConfig(level=LOGGING_LEVEL)
 # ========================================
 
-
 # ========================================
-# Handlers
+# FSM Groups
 # ========================================
 
 
@@ -74,6 +73,11 @@ class FormDenoiseMetrics(StatesGroup):
     denoise_method = State()
     ground_truth_image = State()
     noisy_image = State()
+
+
+# ========================================
+# Handlers
+# ========================================
 
 
 @dp.message_handler(commands=["cancel"], state="*")
@@ -155,7 +159,8 @@ async def gt_metrics_noisy_image(message: types.Message, state: FSMContext):
     ssim = calc_ssim(ground_truth_image, denoised_image)
     psnr = calc_psnr(ground_truth_image, denoised_image)
     metrics_message = (
-        locale["gt_metrics_psnr"].format(psnr)
+        "Метрики:\n"
+        + locale["gt_metrics_psnr"].format(psnr)
         + "\n"
         + locale["gt_metrics_ssim"].format(ssim)
     )

@@ -41,8 +41,8 @@ WIP
     "help_algo_start": "Справка по какому из методов вас интересует?",
     "gt_metrics_gt": "Отправьте изображение, которое является незашумленным:",
     "gt_metrics_noisy": "Отправьте изображение, которое является зашумленным:",
-    "gt_metrics_ssim": "SSIM: {ssim}",
-    "gt_metrics_psnr": "PSNR: {psnr}",
+    "gt_metrics_ssim": "SSIM: {}",
+    "gt_metrics_psnr": "PSNR: {}",
     "gt_metrics_start": "Вычисляю метрики...",
     "cancel": "Отмена",
 }
