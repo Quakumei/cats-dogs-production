@@ -69,7 +69,7 @@ install_dev:
 
 .PHONY:	black
 black:
-	$(python) -m black --line-length 80 .
+	$(python) -m black --line-length 79 .
 
 .PHONY: isort
 isort:

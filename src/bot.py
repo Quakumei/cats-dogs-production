@@ -11,7 +11,8 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from dotenv import load_dotenv
 
 from bot_locale import LOCALE_RUS
-from denoise import denoise, pil_to_telegram, telegram_to_pil
+from denoise import (calc_psnr, calc_ssim, denoise, pil_to_telegram,
+                     telegram_to_pil)
 
 
 def get_env(
@@ -69,10 +70,27 @@ class FormDenoiseHelp(StatesGroup):
     denoise_method = State()
 
 
-@dp.message_handler(commands=["denoise"])
-async def denoise_start(message: types.Message):
-    """Denoise command handler"""
-    await FormDenoise.denoise_method.set()
+class FormDenoiseMetrics(StatesGroup):
+    denoise_method = State()
+    ground_truth_image = State()
+    noisy_image = State()
+
+
+@dp.message_handler(commands=["cancel"], state="*")
+async def cancel_handler(message: types.Message, state: FSMContext):
+    """Cancel command handler"""
+    current_state = await state.get_state()
+    if current_state is None:
+        return
+
+    await state.finish()
+    await message.reply(locale["cancel"])
+
+
+@dp.message_handler(commands=["gt_metrics"])
+async def gt_metrics_start(message: types.Message):
+    """GT metrics command handler"""
+    await FormDenoiseMetrics.denoise_method.set()
     await message.reply(
         locale["denoise_choice"],
         reply_markup=types.ReplyKeyboardMarkup(
@@ -89,6 +107,60 @@ async def denoise_start(message: types.Message):
             resize_keyboard=True,
         ),
     )
+
+
+@dp.message_handler(state=FormDenoiseMetrics.denoise_method)
+async def gt_metrics_method(message: types.Message, state: FSMContext):
+    """GT metrics method handler"""
+    await state.update_data(denoise_method=message.text)
+    await FormDenoiseMetrics.next()
+    await message.reply(
+        locale["gt_metrics_gt"], reply_markup=types.ReplyKeyboardRemove()
+    )
+
+
+@dp.message_handler(
+    state=FormDenoiseMetrics.ground_truth_image,
+    content_types=types.ContentTypes.PHOTO,
+)
+async def gt_metrics_ground_truth_image(
+    message: types.Message, state: FSMContext
+):
+    """GT metrics ground truth image handler"""
+    await state.update_data(ground_truth_image=message.photo[-1].file_id)
+    await FormDenoiseMetrics.next()
+    await message.reply(locale["gt_metrics_noisy"])
+
+
+@dp.message_handler(
+    state=FormDenoiseMetrics.noisy_image,
+    content_types=types.ContentTypes.PHOTO,
+)
+async def gt_metrics_noisy_image(message: types.Message, state: FSMContext):
+    """GT metrics noisy image handler"""
+    await state.update_data(noisy_image=message.photo[-1].file_id)
+    data = await state.get_data()
+    denoise_method = data["denoise_method"]
+    ground_truth_image = data["ground_truth_image"]
+    noisy_image = data["noisy_image"]
+    await state.finish()
+
+    await message.reply(locale["gt_metrics_start"])
+
+    gt_img = await bot.download_file_by_id(ground_truth_image)
+    ground_truth_image = telegram_to_pil(gt_img.read())
+    ns_img = await bot.download_file_by_id(noisy_image)
+    noisy_image = telegram_to_pil(ns_img.read())
+    denoised_image = denoise(noisy_image, denoise_method)
+    ssim = calc_ssim(ground_truth_image, denoised_image)
+    psnr = calc_psnr(ground_truth_image, denoised_image)
+    metrics_message = (
+        locale["gt_metrics_psnr"].format(psnr)
+        + "\n"
+        + locale["gt_metrics_ssim"].format(ssim)
+    )
+    await message.reply_photo(pil_to_telegram(denoised_image))
+    await message.reply(metrics_message)
 
 
 @dp.message_handler(commands=["help_algo"])
@@ -125,6 +197,28 @@ async def help_algo_method(message: types.Message, state: FSMContext):
         parse_mode="Markdown",
     )
     await state.finish()
+
+
+@dp.message_handler(commands=["denoise"])
+async def denoise_start(message: types.Message):
+    """Denoise command handler"""
+    await FormDenoise.denoise_method.set()
+    await message.reply(
+        locale["denoise_choice"],
+        reply_markup=types.ReplyKeyboardMarkup(
+            keyboard=[
+                [
+                    types.KeyboardButton(
+                        text="cv2.fastNlMeansDenoisingColored"
+                    ),
+                ],
+                [
+                    types.KeyboardButton(text="Нейронная сеть"),
+                ],
+            ],
+            resize_keyboard=True,
+        ),
+    )
 
 
 @dp.message_handler(state=FormDenoise.denoise_method)
