@@ -60,17 +60,17 @@ logging.basicConfig(level=LOGGING_LEVEL)
 # ========================================
 
 
-class Form(StatesGroup):
-    """Form for storing user data"""
-
+class FormDenoise(StatesGroup):
     denoise_method = State()
     image = State()
 
+class FormDenoiseHelp(StatesGroup):
+    denoise_method = State()
 
 @dp.message_handler(commands=["denoise"])
 async def denoise_start(message: types.Message):
     """Denoise command handler"""
-    await Form.denoise_method.set()
+    await FormDenoise.denoise_method.set()
     await message.reply(
         locale["denoise_choice"],
         reply_markup=types.ReplyKeyboardMarkup(
@@ -88,18 +88,54 @@ async def denoise_start(message: types.Message):
         ),
     )
 
+@dp.message_handler(commands=["help_algo"])
+async def help_algo_start(message: types.Message):
+    """Help algo command handler"""
+    await FormDenoiseHelp.denoise_method.set()
+    await message.reply(
+        locale["help_algo_start"],
+        reply_markup=types.ReplyKeyboardMarkup(
+            keyboard=[
+                [
+                    types.KeyboardButton(
+                        text="cv2.fastNlMeansDenoisingColored"
+                    ),
+                ],
+                [
+                    types.KeyboardButton(text="Нейронная сеть"),
+                ],
+            ],
+            resize_keyboard=True,
+        ),
+    )
 
-@dp.message_handler(state=Form.denoise_method)
+@dp.message_handler(state=FormDenoiseHelp.denoise_method)
+async def help_algo_method(message: types.Message, state: FSMContext):
+    """Help algo method handler"""
+    await state.update_data(denoise_method=message.text)
+    # Get data
+    data = await state.get_data()
+    await message.reply(
+        locale[f"help_algo-{data['denoise_method']}"],
+        reply_markup=types.ReplyKeyboardRemove(),
+        parse_mode="Markdown"
+    )
+    await state.finish()
+
+
+
+
+@dp.message_handler(state=FormDenoise.denoise_method)
 async def denoise_method(message: types.Message, state: FSMContext):
     """Denoise method handler"""
     await state.update_data(denoise_method=message.text)
-    await Form.next()
+    await FormDenoise.next()
     await message.reply(
         locale["denoise_send_image"],
     )
 
 
-@dp.message_handler(state=Form.image, content_types=types.ContentTypes.PHOTO)
+@dp.message_handler(state=FormDenoise.image, content_types=types.ContentTypes.PHOTO)
 async def denoise_image(message: types.Message, state: FSMContext):
     """Denoise image handler"""
     await state.update_data(image=message.photo[-1].file_id)
