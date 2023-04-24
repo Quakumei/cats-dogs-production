@@ -11,8 +11,8 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from dotenv import load_dotenv
 
 from bot_locale import LOCALE_RUS
-from denoise import (calc_psnr, calc_ssim, denoise, pil_to_telegram,
-                     telegram_to_pil)
+from denoise import (apply_noise, calc_psnr, calc_ssim, denoise,
+                     pil_to_telegram, telegram_to_pil)
 
 
 def get_env(
@@ -75,6 +75,11 @@ class FormDenoiseMetrics(StatesGroup):
     noisy_image = State()
 
 
+class ApplyNoise(StatesGroup):
+    noise_type = State()
+    image = State()
+
+
 # ========================================
 # Handlers
 # ========================================
@@ -89,6 +94,50 @@ async def cancel_handler(message: types.Message, state: FSMContext):
 
     await state.finish()
     await message.reply(locale["cancel"])
+
+
+@dp.message_handler(commands=["apply_noise"])
+async def apply_noise_start(message: types.Message):
+    """Apply noise command handler"""
+    await ApplyNoise.noise_type.set()
+    await message.reply(
+        locale["add_noise_choice"],
+        reply_markup=types.ReplyKeyboardMarkup(
+            keyboard=[["gaussian", "poisson", "s&p", "speckle"], ["cancel"]],
+            resize_keyboard=True,
+        ),
+    )
+
+
+@dp.message_handler(state=ApplyNoise.noise_type)
+async def apply_noise_type(message: types.Message, state: FSMContext):
+    """Apply noise type handler"""
+    # Clean keyboard
+    await state.update_data(noise_type=message.text)
+    await ApplyNoise.next()
+    await message.reply(
+        locale["add_noise_image"], reply_markup=types.ReplyKeyboardRemove()
+    )
+
+
+@dp.message_handler(
+    state=ApplyNoise.image, content_types=types.ContentTypes.PHOTO
+)
+async def apply_noise_image(message: types.Message, state: FSMContext):
+    """Apply noise image handler"""
+    await state.update_data(image=message.photo[-1].file_id)
+    data = await state.get_data()
+    noise_type = data["noise_type"]
+    image = data["image"]
+    await state.finish()
+
+    await message.reply(locale["add_noise_start"])
+
+    img = await bot.download_file_by_id(image)
+    image = telegram_to_pil(img.read())
+    noisy_image = apply_noise(image, noise_type)
+    await message.reply_photo(pil_to_telegram(noisy_image))
+    await message.reply(locale["add_noise_done"])
 
 
 @dp.message_handler(commands=["gt_metrics"])
