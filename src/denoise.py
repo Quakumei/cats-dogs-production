@@ -1,6 +1,7 @@
 """Модуль для удаления шума из изображений"""
 
 import io
+import random
 
 import cv2
 import numpy as np
@@ -32,52 +33,32 @@ def denoise_cv2(image: Image.Image) -> Image.Image:
 
 
 def apply_noise(image: Image.Image, noise_type: str) -> Image.Image:
-    def noisy(noise_typ, image):
-        return image
-        # if noise_typ == "gauss":
-        #     row,col,ch= image.shape
-        #     mean = 0
-        #     var = 0.1
-        #     sigma = var**0.5
-        #     gauss = np.random.normal(mean,sigma,(row,col,ch))
-        #     gauss = gauss.reshape(row,col,ch)
-        #     noisy = image + gauss
-        #     return noisy
-        # elif noise_typ == "s&p":
-        #     row,col,ch = image.shape
-        #     s_vs_p = 0.5
-        #     amount = 0.004
-        #     out = np.copy(image)
-        #     # Salt mode
-        #     num_salt = np.ceil(amount * image.size * s_vs_p)
-        #     coords = [np.random.randint(0, i - 1, int(num_salt))
-        #             for i in image.shape]
-        #     out[coords] = 1
+    def sp_noise(image: Image.Image) -> Image.Image:
+        """
+        Add salt-and-pepper noise to the image.
+        """
+        img = image.copy()
+        width, height = img.size
+        for x in range(width):
+            for y in range(height):
+                if random.random() < 0.05:
+                    img.putpixel((x, y), (0, 0, 0))
+                elif random.random() > 0.95:
+                    img.putpixel((x, y), (255, 255, 255))
+        return img
 
-        #     # Pepper mode
-        #     num_pepper = np.ceil(amount* image.size * (1. - s_vs_p))
-        #     coords = [np.random.randint(0, i - 1, int(num_pepper))
-        #             for i in image.shape]
-        #     out[coords] = 0
-        #     return out
-        # elif noise_typ == "poisson":
-        #     vals = len(np.unique(image))
-        #     vals = 2 ** np.ceil(np.log2(vals))
-        #     noisy = np.random.poisson(image * vals) / float(vals)
-        #     return noisy
-        # elif noise_typ =="speckle":
-        #     row,col,ch = image.shape
-        #     gauss = np.random.randn(row,col,ch)
-        #     gauss = gauss.reshape(row,col,ch)
-        #     noisy = image + image * gauss
-        #     return noisy
-        # else:
-        #     return image
+    noises = {
+        "s&p": sp_noise,
+    }
 
-    image = np.array(image)
-    image = noisy(noise_type, image)
-    image = Image.fromarray(image)
-    return image
+    if noise_type in noises:
+        return noises[noise_type](image)
+    else:
+        raise ValueError("Unknown noise type")
+
+    # image = np.array(image)
+    # image = sp_noise(0.5, image)
+    # image = Image.fromarray(image)
 
 
 def denoise_neural(image: Image.Image) -> Image.Image:

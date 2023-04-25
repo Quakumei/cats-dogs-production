@@ -93,7 +93,9 @@ async def cancel_handler(message: types.Message, state: FSMContext):
         return
 
     await state.finish()
-    await message.reply(locale["cancel"])
+    await message.reply(
+        locale["cancel"], reply_markup=types.ReplyKeyboardRemove()
+    )
 
 
 @dp.message_handler(commands=["apply_noise"])
@@ -103,7 +105,15 @@ async def apply_noise_start(message: types.Message):
     await message.reply(
         locale["add_noise_choice"],
         reply_markup=types.ReplyKeyboardMarkup(
-            keyboard=[["gaussian", "poisson", "s&p", "speckle"], ["cancel"]],
+            keyboard=[
+                [
+                    # "gaussian",
+                    # "poisson",
+                    "s&p",
+                    # "speckle"
+                ],
+                ["/cancel"],
+            ],
             resize_keyboard=True,
         ),
     )
@@ -135,9 +145,13 @@ async def apply_noise_image(message: types.Message, state: FSMContext):
 
     img = await bot.download_file_by_id(image)
     image = telegram_to_pil(img.read())
-    noisy_image = apply_noise(image, noise_type)
-    await message.reply_photo(pil_to_telegram(noisy_image))
-    await message.reply(locale["add_noise_done"])
+    try:
+        noisy_image = apply_noise(image, noise_type)
+        await message.reply_photo(pil_to_telegram(noisy_image))
+        await message.reply(locale["add_noise_done"])
+    except ValueError as e:
+        await message.reply(locale["add_noise_error"])
+        logging.error(e)
 
 
 @dp.message_handler(commands=["gt_metrics"])
@@ -154,7 +168,7 @@ async def gt_metrics_start(message: types.Message):
                     ),
                 ],
                 [
-                    types.KeyboardButton(text="Нейронная сеть"),
+                    # types.KeyboardButton(text="Нейронная сеть"),
                 ],
             ],
             resize_keyboard=True,
@@ -231,7 +245,7 @@ async def help_algo_start(message: types.Message):
                     ),
                 ],
                 [
-                    types.KeyboardButton(text="Нейронная сеть"),
+                    # types.KeyboardButton(text="Нейронная сеть"),
                 ],
             ],
             resize_keyboard=True,
@@ -267,7 +281,7 @@ async def denoise_start(message: types.Message):
                     ),
                 ],
                 [
-                    types.KeyboardButton(text="Нейронная сеть"),
+                    # types.KeyboardButton(text="Нейронная сеть"),
                 ],
             ],
             resize_keyboard=True,

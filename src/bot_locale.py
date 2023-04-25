@@ -54,4 +54,5 @@ WIP
     "add_noise_speckle": "Шум спекле",
     "add_noise_start": "Добавляю шум...",
     "add_noise_done": "Шум добавлен!",
+    "add_noise_error": "Неизвестный метод добавления шума!",
 }
