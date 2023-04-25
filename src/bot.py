@@ -11,8 +11,8 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from dotenv import load_dotenv
 
 from bot_locale import LOCALE_RUS
-from denoise import (apply_noise, calc_psnr, calc_ssim, denoise,
-                     pil_to_telegram, telegram_to_pil)
+from denoise import (AVAILABLE_NOISES, apply_noise, calc_psnr, calc_ssim,
+                     denoise, pil_to_telegram, telegram_to_pil)
 
 
 def get_env(
@@ -106,12 +106,7 @@ async def apply_noise_start(message: types.Message):
         locale["add_noise_choice"],
         reply_markup=types.ReplyKeyboardMarkup(
             keyboard=[
-                [
-                    # "gaussian",
-                    # "poisson",
-                    "s&p",
-                    # "speckle"
-                ],
+                AVAILABLE_NOISES,
                 ["/cancel"],
             ],
             resize_keyboard=True,
@@ -243,6 +238,7 @@ async def help_algo_start(message: types.Message):
                     types.KeyboardButton(
                         text="cv2.fastNlMeansDenoisingColored"
                     ),
+                    types.KeyboardButton(text="cv2.medianBlur"),
                 ],
                 [
                     # types.KeyboardButton(text="Нейронная сеть"),
@@ -281,7 +277,7 @@ async def denoise_start(message: types.Message):
                     ),
                 ],
                 [
-                    # types.KeyboardButton(text="Нейронная сеть"),
+                    types.KeyboardButton(text="cv2.medianBlur"),
                 ],
             ],
             resize_keyboard=True,

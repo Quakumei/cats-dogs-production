@@ -19,7 +19,8 @@ LOCALE_RUS: dict[str, str] = {
     "help_algo-cv2.fastNlMeansDenoisingColored": """
 **cv2.fastNlMeansDenoisingColored** - метод, основанный на использовании
 алгоритма быстрого нелокального среднего фильтрации для удаления шума
-из изображения.
+из изображения. Плохо работает с s&p, но удовлетворительно с Poisson,
+Gaussian и Speckle шумами.
 
 ```
 def denoise_cv2(image: Image.Image) -> Image.Image:
@@ -38,6 +39,11 @@ def denoise_cv2(image: Image.Image) -> Image.Image:
 ```
 WIP
 ```
+""",
+    "help_algo-Median filter": """
+**Median filter** - метод, основанный на использовании
+медианного фильтра для удаления шума из изображения.
+Используется для борьбы с salt and pepper шумом.
 """,
     "help_algo_start": "Справка по какому из методов вас интересует?",
     "gt_metrics_gt": "Отправьте изображение, которое является незашумленным:",

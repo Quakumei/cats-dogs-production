@@ -1,13 +1,13 @@
 """Модуль для удаления шума из изображений"""
 
 import io
-import random
 
 import cv2
 import numpy as np
 from PIL import Image
 from skimage.metrics import peak_signal_noise_ratio as psnr
 from skimage.metrics import structural_similarity as ssim
+from skimage.util import img_as_float, random_noise
 
 
 def telegram_to_pil(image) -> Image.Image:
@@ -32,33 +32,31 @@ def denoise_cv2(image: Image.Image) -> Image.Image:
     return image
 
 
+def denoise_median_blur(image: Image.Image, ks: int = 3) -> Image.Image:
+    """Denoise image with cv2.medianBlur"""
+    image = np.array(image)
+    image = cv2.medianBlur(image, ks)
+    image = Image.fromarray(image)
+    return image
+
+
+AVAILABLE_NOISES = ["gaussian", "s&p", "poisson", "speckle"]
+
+
 def apply_noise(image: Image.Image, noise_type: str) -> Image.Image:
-    def sp_noise(image: Image.Image) -> Image.Image:
-        """
-        Add salt-and-pepper noise to the image.
-        """
-        img = image.copy()
-        width, height = img.size
-        for x in range(width):
-            for y in range(height):
-                if random.random() < 0.05:
-                    img.putpixel((x, y), (0, 0, 0))
-                elif random.random() > 0.95:
-                    img.putpixel((x, y), (255, 255, 255))
-        return img
+    """Apply noise to image using skimage.util.random_noise"""
+    # Convert image to numpy array with a compatible data type
+    image = np.array(image)
+    if image.dtype != np.uint8:
+        image = np.uint8(image * 255)
 
-    noises = {
-        "s&p": sp_noise,
-    }
+    # Apply noise
+    image = img_as_float(image)
+    image = random_noise(image, mode=noise_type)
 
-    if noise_type in noises:
-        return noises[noise_type](image)
-    else:
-        raise ValueError("Unknown noise type")
-
-    # image = np.array(image)
-    # image = sp_noise(0.5, image)
-    # image = Image.fromarray(image)
+    # Convert image to PIL format
+    image = Image.fromarray(np.uint8(image * 255))
+    return image
 
 
 def denoise_neural(image: Image.Image) -> Image.Image:
@@ -75,6 +73,8 @@ def denoise(image: Image.Image, method: str) -> Image.Image:
         return denoise_cv2(image)
     elif method == "Нейронная сеть":
         return denoise_neural(image)
+    elif method == "cv2.medianBlur":
+        return denoise_median_blur(image)
     else:
         raise ValueError("Unknown denoise method")
 
