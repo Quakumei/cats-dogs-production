@@ -1,6 +1,7 @@
 """Aiogram Telegram bot to serve the model"""
 
 import asyncio
+import io
 import logging
 import os
 
@@ -13,6 +14,7 @@ from dotenv import load_dotenv
 from bot_locale import LOCALE_RUS
 from denoise import (AVAILABLE_NOISES, apply_noise, calc_psnr, calc_ssim,
                      denoise, pil_to_telegram, telegram_to_pil)
+from video_denoise import moviepy_to_telegram, telegram_to_moviepy
 
 
 def get_env(
@@ -80,6 +82,11 @@ class ApplyNoise(StatesGroup):
     image = State()
 
 
+class ApplyNoiseVideo(StatesGroup):
+    noise_type = State()
+    video = State()
+
+
 # ========================================
 # Handlers
 # ========================================
@@ -143,6 +150,58 @@ async def apply_noise_image(message: types.Message, state: FSMContext):
     try:
         noisy_image = apply_noise(image, noise_type)
         await message.reply_photo(pil_to_telegram(noisy_image))
+        await message.reply(locale["add_noise_done"])
+    except ValueError as e:
+        await message.reply(locale["add_noise_error"])
+        logging.error(e)
+
+
+@dp.message_handler(commands=["apply_noise_video"])
+async def apply_noise_video_start(message: types.Message):
+    """Apply noise command handler"""
+    await ApplyNoiseVideo.noise_type.set()
+    await message.reply(
+        locale["add_noise_choice"],
+        reply_markup=types.ReplyKeyboardMarkup(
+            keyboard=[
+                AVAILABLE_NOISES,
+                ["/cancel"],
+            ],
+            resize_keyboard=True,
+        ),
+    )
+
+
+@dp.message_handler(state=ApplyNoiseVideo.noise_type)
+async def apply_noise_video_type(message: types.Message, state: FSMContext):
+    """Apply noise type handler"""
+    # Clean keyboard
+    await state.update_data(noise_type=message.text)
+    await ApplyNoiseVideo.next()
+    await message.reply(
+        locale["add_noise_video"], reply_markup=types.ReplyKeyboardRemove()
+    )
+
+
+@dp.message_handler(
+    state=ApplyNoiseVideo.video, content_types=types.ContentTypes.VIDEO
+)
+async def apply_noise_video_process(message: types.Message, state: FSMContext):
+    """Apply noise image handler"""
+    await state.update_data(video=message.video.file_id)
+    data = await state.get_data()
+    # noise_type = data["noise_type"]
+    video = data["video"]
+    await state.finish()
+
+    await message.reply(locale["add_noise_start"])
+
+    video: io.BytesIO = await bot.download_file_by_id(video)
+    video_mp = telegram_to_moviepy(video)
+    try:
+        # noisy_video = apply_noise_video(video_mp, noise_type)
+        noisy_tg_video = moviepy_to_telegram(video_mp)
+        await message.reply_video(noisy_tg_video)
         await message.reply(locale["add_noise_done"])
     except ValueError as e:
         await message.reply(locale["add_noise_error"])
