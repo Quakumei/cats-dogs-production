@@ -1,6 +1,7 @@
 """Aiogram Telegram bot to serve the model"""
 
 import asyncio
+import io
 import logging
 import os
 
@@ -13,6 +14,7 @@ from dotenv import load_dotenv
 from bot_locale import LOCALE_RUS
 from denoise import (AVAILABLE_NOISES, apply_noise, calc_psnr, calc_ssim,
                      denoise, pil_to_telegram, telegram_to_pil)
+from video_denoise import moviepy_to_telegram, telegram_to_moviepy
 
 
 def get_env(
@@ -77,6 +79,11 @@ class FormDenoiseMetrics(StatesGroup):
 class ApplyNoise(StatesGroup):
     noise_type = State()
     image = State()
+
+
+class ApplyNoiseVideo(StatesGroup):
+    noise_type = State()
+    video = State()
 
 
 # ========================================
@@ -148,7 +155,7 @@ async def apply_noise_image(message: types.Message, state: FSMContext):
         logging.error(e)
 
 
-@dp.message_handler(commands=["add_noise_video"])
+@dp.message_handler(commands=["apply_noise_video"])
 async def apply_noise_video_start(message: types.Message):
     """Apply noise command handler"""
     await ApplyNoiseVideo.noise_type.set()
