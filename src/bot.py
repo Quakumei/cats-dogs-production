@@ -45,7 +45,6 @@ def get_env(
 LOGGING_LEVEL = logging.INFO
 USE_DOTENV = True
 # ========================================
-# TODO: Use CLI to specify config
 required_envs = ["TELEGRAM_BOT_TOKEN"]
 get_env(required=required_envs, use_dotenv=USE_DOTENV)
 TELEGRAM_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
@@ -414,10 +413,16 @@ async def general(message: types.Message):
 # ========================================
 
 
-async def main():
+import click
+
+async def main_loop():
     """Start the bot"""
     await dp.start_polling(bot)
 
-
-if __name__ == "__main__":
-    asyncio.run(main())
+@click.command()
+@click.option("--debug", "-d", is_flag=True, help="Enable debug mode")
+def main(debug: bool):
+    """Start the bot"""
+    if debug:
+        logging.basicConfig(level=logging.DEBUG)
+    asyncio.run(main_loop())
