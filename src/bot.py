@@ -43,7 +43,6 @@ def get_env(
 LOGGING_LEVEL = logging.INFO
 USE_DOTENV = True
 # ========================================
-# TODO: Use CLI to specify config
 required_envs = ["TELEGRAM_BOT_TOKEN"]
 get_env(required=required_envs, use_dotenv=USE_DOTENV)
 TELEGRAM_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
@@ -143,6 +142,58 @@ async def apply_noise_image(message: types.Message, state: FSMContext):
     try:
         noisy_image = apply_noise(image, noise_type)
         await message.reply_photo(pil_to_telegram(noisy_image))
+        await message.reply(locale["add_noise_done"])
+    except ValueError as e:
+        await message.reply(locale["add_noise_error"])
+        logging.error(e)
+
+
+@dp.message_handler(commands=["add_noise_video"])
+async def apply_noise_video_start(message: types.Message):
+    """Apply noise command handler"""
+    await ApplyNoiseVideo.noise_type.set()
+    await message.reply(
+        locale["add_noise_choice"],
+        reply_markup=types.ReplyKeyboardMarkup(
+            keyboard=[
+                AVAILABLE_NOISES,
+                ["/cancel"],
+            ],
+            resize_keyboard=True,
+        ),
+    )
+
+
+@dp.message_handler(state=ApplyNoiseVideo.noise_type)
+async def apply_noise_video_type(message: types.Message, state: FSMContext):
+    """Apply noise type handler"""
+    # Clean keyboard
+    await state.update_data(noise_type=message.text)
+    await ApplyNoiseVideo.next()
+    await message.reply(
+        locale["add_noise_video"], reply_markup=types.ReplyKeyboardRemove()
+    )
+
+
+@dp.message_handler(
+    state=ApplyNoiseVideo.video, content_types=types.ContentTypes.VIDEO
+)
+async def apply_noise_video_process(message: types.Message, state: FSMContext):
+    """Apply noise image handler"""
+    await state.update_data(video=message.video.file_id)
+    data = await state.get_data()
+    # noise_type = data["noise_type"]
+    video = data["video"]
+    await state.finish()
+
+    await message.reply(locale["add_noise_start"])
+
+    video: io.BytesIO = await bot.download_file_by_id(video)
+    video_mp = telegram_to_moviepy(video)
+    try:
+        # noisy_video = apply_noise_video(video_mp, noise_type)
+        noisy_tg_video = moviepy_to_telegram(video_mp)
+        await message.reply_video(noisy_tg_video)
         await message.reply(locale["add_noise_done"])
     except ValueError as e:
         await message.reply(locale["add_noise_error"])
@@ -355,10 +406,16 @@ async def general(message: types.Message):
 # ========================================
 
 
-async def main():
+import click
+
+async def main_loop():
     """Start the bot"""
     await dp.start_polling(bot)
 
-
-if __name__ == "__main__":
-    asyncio.run(main())
+@click.command()
+@click.option("--debug", "-d", is_flag=True, help="Enable debug mode")
+def main(debug: bool):
+    """Start the bot"""
+    if debug:
+        logging.basicConfig(level=logging.DEBUG)
+    asyncio.run(main_loop())
