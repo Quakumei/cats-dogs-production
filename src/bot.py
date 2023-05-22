@@ -1,20 +1,19 @@
 """Aiogram Telegram bot to serve the model"""
 
-import asyncio
-import io
 import logging
 import os
 
-from aiogram import Bot, Dispatcher, types
+from aiogram import Bot, Dispatcher, executor, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters.state import State, StatesGroup
 from dotenv import load_dotenv
 
-from bot_locale import LOCALE_RUS
-from denoise import (AVAILABLE_NOISES, apply_noise, calc_psnr, calc_ssim,
-                     denoise, pil_to_telegram, telegram_to_pil)
-from video_denoise import moviepy_to_telegram, telegram_to_moviepy
+from src.bot_locale import LOCALE_RUS
+from src.denoise_image import (AVAILABLE_NOISES, apply_noise, calc_psnr,
+                               calc_ssim, denoise, pil_to_telegram,
+                               telegram_to_pil)
+from src.fsm_groups import (ApplyNoise, FormDenoise, FormDenoiseHelp,
+                            FormDenoiseMetrics)
 
 
 def get_env(
@@ -55,35 +54,6 @@ storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
 logging.basicConfig(level=LOGGING_LEVEL)
 # ========================================
-
-# ========================================
-# FSM Groups
-# ========================================
-
-
-class FormDenoise(StatesGroup):
-    denoise_method = State()
-    image = State()
-
-
-class FormDenoiseHelp(StatesGroup):
-    denoise_method = State()
-
-
-class FormDenoiseMetrics(StatesGroup):
-    denoise_method = State()
-    ground_truth_image = State()
-    noisy_image = State()
-
-
-class ApplyNoise(StatesGroup):
-    noise_type = State()
-    image = State()
-
-
-class ApplyNoiseVideo(StatesGroup):
-    noise_type = State()
-    video = State()
 
 
 # ========================================
@@ -149,58 +119,6 @@ async def apply_noise_image(message: types.Message, state: FSMContext):
     try:
         noisy_image = apply_noise(image, noise_type)
         await message.reply_photo(pil_to_telegram(noisy_image))
-        await message.reply(locale["add_noise_done"])
-    except ValueError as e:
-        await message.reply(locale["add_noise_error"])
-        logging.error(e)
-
-
-@dp.message_handler(commands=["apply_noise_video"])
-async def apply_noise_video_start(message: types.Message):
-    """Apply noise command handler"""
-    await ApplyNoiseVideo.noise_type.set()
-    await message.reply(
-        locale["add_noise_choice"],
-        reply_markup=types.ReplyKeyboardMarkup(
-            keyboard=[
-                AVAILABLE_NOISES,
-                ["/cancel"],
-            ],
-            resize_keyboard=True,
-        ),
-    )
-
-
-@dp.message_handler(state=ApplyNoiseVideo.noise_type)
-async def apply_noise_video_type(message: types.Message, state: FSMContext):
-    """Apply noise type handler"""
-    # Clean keyboard
-    await state.update_data(noise_type=message.text)
-    await ApplyNoiseVideo.next()
-    await message.reply(
-        locale["add_noise_video"], reply_markup=types.ReplyKeyboardRemove()
-    )
-
-
-@dp.message_handler(
-    state=ApplyNoiseVideo.video, content_types=types.ContentTypes.VIDEO
-)
-async def apply_noise_video_process(message: types.Message, state: FSMContext):
-    """Apply noise image handler"""
-    await state.update_data(video=message.video.file_id)
-    data = await state.get_data()
-    # noise_type = data["noise_type"]
-    video = data["video"]
-    await state.finish()
-
-    await message.reply(locale["add_noise_start"])
-
-    video: io.BytesIO = await bot.download_file_by_id(video)
-    video_mp = telegram_to_moviepy(video)
-    try:
-        # noisy_video = apply_noise_video(video_mp, noise_type)
-        noisy_tg_video = moviepy_to_telegram(video_mp)
-        await message.reply_video(noisy_tg_video)
         await message.reply(locale["add_noise_done"])
     except ValueError as e:
         await message.reply(locale["add_noise_error"])
@@ -413,16 +331,5 @@ async def general(message: types.Message):
 # ========================================
 
 
-import click
-
-async def main_loop():
-    """Start the bot"""
-    await dp.start_polling(bot)
-
-@click.command()
-@click.option("--debug", "-d", is_flag=True, help="Enable debug mode")
-def main(debug: bool):
-    """Start the bot"""
-    if debug:
-        logging.basicConfig(level=logging.DEBUG)
-    asyncio.run(main_loop())
+if __name__ == "__main__":
+    executor.start_polling(dp, skip_updates=True)

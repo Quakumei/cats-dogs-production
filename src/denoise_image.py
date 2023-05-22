@@ -59,20 +59,10 @@ def apply_noise(image: Image.Image, noise_type: str) -> Image.Image:
     return image
 
 
-def denoise_neural(image: Image.Image) -> Image.Image:
-    """Denoise image with neural network"""
-
-    # TODO: Add neural network
-
-    return image
-
-
 def denoise(image: Image.Image, method: str) -> Image.Image:
     """Denoise image"""
     if method == "cv2.fastNlMeansDenoisingColored":
         return denoise_cv2(image)
-    elif method == "Нейронная сеть":
-        return denoise_neural(image)
     elif method == "cv2.medianBlur":
         return denoise_median_blur(image)
     else:
