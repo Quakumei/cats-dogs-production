@@ -3,7 +3,7 @@ import warnings
 import pytest
 from PIL import Image
 
-from src.denoise import calc_psnr, calc_ssim, denoise
+from src.denoise_image import calc_psnr, calc_ssim, denoise
 
 
 def get_psnr_ssim(image_gt, image_denoised) -> tuple[float, float]:

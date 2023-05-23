@@ -6,14 +6,16 @@ import os
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
+from aiogram.utils.exceptions import FileIsTooBig
 from dotenv import load_dotenv
 
 from src.bot_locale import LOCALE_RUS
 from src.denoise_image import (AVAILABLE_NOISES, apply_noise, calc_psnr,
                                calc_ssim, denoise, pil_to_telegram,
                                telegram_to_pil)
-from src.fsm_groups import (ApplyNoise, FormDenoise, FormDenoiseHelp,
-                            FormDenoiseMetrics)
+from src.denoise_video import apply_denoise_func_video
+from src.fsm_groups import (FormApplyNoise, FormDenoise, FormDenoiseHelp,
+                            FormDenoiseMetrics, FormVideoApply)
 
 
 def get_env(
@@ -77,7 +79,7 @@ async def cancel_handler(message: types.Message, state: FSMContext):
 @dp.message_handler(commands=["apply_noise"])
 async def apply_noise_start(message: types.Message):
     """Apply noise command handler"""
-    await ApplyNoise.noise_type.set()
+    await FormApplyNoise.noise_type.set()
     await message.reply(
         locale["add_noise_choice"],
         reply_markup=types.ReplyKeyboardMarkup(
@@ -90,19 +92,19 @@ async def apply_noise_start(message: types.Message):
     )
 
 
-@dp.message_handler(state=ApplyNoise.noise_type)
+@dp.message_handler(state=FormApplyNoise.noise_type)
 async def apply_noise_type(message: types.Message, state: FSMContext):
     """Apply noise type handler"""
     # Clean keyboard
     await state.update_data(noise_type=message.text)
-    await ApplyNoise.next()
+    await FormApplyNoise.next()
     await message.reply(
         locale["add_noise_image"], reply_markup=types.ReplyKeyboardRemove()
     )
 
 
 @dp.message_handler(
-    state=ApplyNoise.image, content_types=types.ContentTypes.PHOTO
+    state=FormApplyNoise.image, content_types=types.ContentTypes.PHOTO
 )
 async def apply_noise_image(message: types.Message, state: FSMContext):
     """Apply noise image handler"""
@@ -314,6 +316,83 @@ async def help(message: types.Message):
     await message.reply(
         locale["help"],
         parse_mode="HTML",
+    )
+
+
+# Handler for VideoApply dialogue (video processing)
+@dp.message_handler(commands=["apply_video"])
+async def apply_video_start(message: types.Message):
+    """Apply video command handler"""
+    await FormVideoApply.video.set()
+    await message.reply(
+        locale["apply_video_send_video"],
+    )
+
+
+@dp.message_handler(
+    state=FormVideoApply.video, content_types=types.ContentTypes.VIDEO
+)
+async def apply_video(message: types.Message, state: FSMContext):
+    """Apply video handler"""
+    await state.update_data(video=message.video.file_id)
+    await message.reply(
+        locale["apply_video_send_algo"],
+        reply_markup=types.ReplyKeyboardMarkup(
+            keyboard=[
+                [types.KeyboardButton(text=t) for t in AVAILABLE_NOISES],
+                [types.KeyboardButton(text="echo")],
+                [
+                    types.KeyboardButton(text=t)
+                    for t in [
+                        "cv2.fastNlMeansDenoisingColored",
+                        "cv2.medianBlur",
+                    ]
+                ],
+            ],
+        ),
+    )
+    await FormVideoApply.next()
+
+
+
+@dp.message_handler(state=FormVideoApply.method)
+async def apply_video_algo(message: types.Message, state: FSMContext):
+    """Apply video algo handler"""
+    """Apply method to video"""
+    await state.update_data(method=message.text)
+    data = await state.get_data()
+    await message.reply(
+        locale["apply_video_start_processing"],
+        reply_markup=types.ReplyKeyboardRemove(),
+    )
+    await state.finish()
+
+    # Fetch video file
+    try:
+        video = await bot.download_file_by_id(data["video"])
+    except FileIsTooBig as e:
+        await message.reply(
+            locale["apply_video_too_big"],
+        )
+        return
+    video = video.read()
+
+    # Write video to file
+    orig_filename = "test.avi"
+    with open(orig_filename, "wb") as f:
+        f.write(video)
+
+    # Apply method to video
+    new_video: str = apply_denoise_func_video(orig_filename, data["method"])
+
+    response_video = types.InputFile(new_video, filename='result.avi')
+
+    # Reply with the video
+    await message.reply_video(
+        video=response_video,
+    )
+    await message.reply(
+        locale["apply_video_done"],
     )
 
 

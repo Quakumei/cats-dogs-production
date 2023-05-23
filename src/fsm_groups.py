@@ -18,6 +18,11 @@ class FormDenoiseMetrics(StatesGroup):
     noisy_image = State()
 
 
-class ApplyNoise(StatesGroup):
+class FormApplyNoise(StatesGroup):
     noise_type = State()
     image = State()
+
+
+class FormVideoApply(StatesGroup):
+    video = State()
+    method = State()
